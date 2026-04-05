@@ -10,7 +10,7 @@
 [Rongyuan Wu](#)<sup>1,2,&#42;</sup> |
 [Lingchen Sun](#)<sup>1,2,&#42;</sup> |
 [Zhengqiang Zhang](#)<sup>1,2</sup> |
-[Xiangtao Kong](#)<sup>1,2</sup> |
+[Xiangtao Kong](#)<sup>1,2</sup> <br>
 [Jixin Zhao](#)<sup>1,2</sup> |
 [Shihao Wang](#)<sup>1</sup> |
 [Lei Zhang](#)<sup>1,2,&dagger;</sup>
