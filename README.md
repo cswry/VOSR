@@ -21,8 +21,7 @@
 <sup>1</sup> The Hong Kong Polytechnic University  
 <sup>2</sup> OPPO Research Institute
 
-<sup>&#42;</sup> Equal contribution.  
-<sup>&dagger;</sup> Corresponding author.
+<sup>&#42;</sup> Equal contribution. | <sup>&dagger;</sup> Corresponding author.
 
 </div>
 
@@ -32,19 +31,21 @@
 
 ## &#x1F4CC; Quick Links
 
-- [&#x1F4F0; News](#-news)
-- [&#x1F9F0; Preparation](#-preparation)
-- [&#x1F3CB;&#xFE0F; Training](#-training)
-- [&#x1F50D; Inference](#-inference)
-- [&#x1F4EE; Contact](#-contact)
-- [&#x1F4DA; Citation](#-citation)
+- [&#x1F4F0; News](#news)
+- [&#x1F9F0; Preparation](#preparation)
+- [&#x1F3CB;&#xFE0F; Training](#training)
+- [&#x1F50D; Inference](#inference)
+- [&#x1F4EE; Contact](#contact)
+- [&#x1F4DA; Citation](#citation)
 
+<a id="news"></a>
 ## &#x1F4F0; News
 
-- 2026.04.10 Public release: training and inference code, [pretrained checkpoints](https://modelscope.cn/models/LULALULALU/VOSR_CKPT), bundled VAE / decoder assets, and the [ScreenSR](https://modelscope.cn/datasets/LULALULALU/ScreenSR) benchmark. Setup and file layout: [Preparation](#-preparation); commands: [Inference](#-inference).
+- 2026.04.10 Public release: training and inference code, [pretrained checkpoints](https://modelscope.cn/models/LULALULALU/VOSR_CKPT), bundled VAE / decoder assets, and the [ScreenSR](https://modelscope.cn/datasets/LULALULALU/ScreenSR) benchmark. Setup and file layout: [Preparation](#preparation); commands: [Training](#training) and [Inference](#inference).
 
 ---
 
+<a id="preparation"></a>
 ## &#x1F9F0; Preparation
 
 ### &#x1F4E6; Model Weights
@@ -94,9 +95,9 @@ Download the [ScreenSR](https://modelscope.cn/datasets/LULALULALU/ScreenSR) benc
 
 ---
 
+<a id="training"></a>
 ## &#x1F3CB;&#xFE0F; Training
 
-Run all training commands from the repository root (the directory that contains `train_vosr.py`, `train_vosr_distill.py`, and `preset/`).
 
 ### Multi-step Training
 
@@ -122,9 +123,10 @@ torchrun --nproc_per_node=8 train_vosr_distill.py --config configs/train_yml/one
 
 ---
 
+<a id="inference"></a>
 ## &#x1F50D; Inference
 
-Single-GPU inference. Run from the same repository root as training.
+Single-GPU inference. 
 
 ### Multi-step models
 
@@ -179,10 +181,12 @@ Key arguments: `-c` checkpoint path, `-i` input image or folder, `-o` output dir
 
 ---
 
+<a id="contact"></a>
 ## &#x1F4EE; Contact
 
 If you have any questions, please feel free to contact: `rong-yuan.wu@connect.polyu.hk`
 
+<a id="citation"></a>
 ## &#x1F4DA; Citation
 
 If VOSR is useful for your research, please consider citing:
