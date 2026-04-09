@@ -1,0 +1,98 @@
+
+train_dataset_config: configs/train_txt/train_dataset_txt.txt
+suffix: ''
+
+
+test_lq_dir: preset/datasets/RealSR/test_LR
+test_gt_dir: preset/datasets/RealSR/test_HR
+test_upscale: 4
+
+infer_steps: 25
+resolution: 512
+train_batch_size: 8
+gradient_accumulation_steps: 1
+dataloader_num_workers: 8
+
+# Model configuration
+patch_size: 2
+mlp_ratio: 4
+use_qknorm: True
+use_swiglu: True
+use_rope: True
+use_rmsnorm: True
+wo_shift: False
+
+dim: 1536
+depth: 36
+num_heads: 24
+
+use_8bit_adam: False
+
+
+
+# AE
+ae_type: qwen
+ae_path: preset/ckpts/Qwen-Image-vae-2d
+
+# Training configuration
+learning_rate: 5.0e-5
+max_train_steps: 400001
+checkpointing_steps: 10000
+infercence_steps: 10000
+adam_beta1: 0.9
+adam_beta2: 0.95
+adam_weight_decay: 1.0e-2
+adam_epsilon: 1.0e-08
+max_grad_norm: 1.0
+lr_scheduler: constant_with_warmup 
+lr_warmup_steps: 0
+lr_num_cycles: 1
+use_ema: True
+mixed_precision: bf16
+tracker_project_name: vosr
+seed: 42
+ema_decay: 0.9999
+
+time_dist: ['uniform', 0, 1.0]
+
+
+
+cfg_ratio: 0.1
+cfg_scale: -0.5
+
+
+weak_cond_strength_aelq_list: [0.05, 0.25]
+
+
+cond_strength_aelq_list: [5, 1]
+
+
+dinov2_size: 448
+enc_type: dinov2l
+enc_dim: 1024
+layer_dinov2b_list: [17] # [5,11,17,23]
+
+interp_type: lin
+
+a: 1.0
+b: 1.0
+
+
+use_pos: False
+train_steps: 2
+encdim_ratio: 3
+t_start: 0
+t_end: 1
+resume_ckpt: ~
+pretrained_ckpt: ~
+
+# logging
+logging_dir: logs
+output_dir: exp_vosr/
+report_to: wandb
+
+
+
+
+dataset_type: 'webdataset' # txt, webdataset
+shuffle_buffer: 2000
