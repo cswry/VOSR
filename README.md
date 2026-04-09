@@ -33,7 +33,7 @@
 :star: If VOSR is helpful to your research or project, please consider starring this repository.
 
 ## News
-- 2026.04.10 — Public release: training and inference code, [pretrained checkpoints](https://modelscope.cn/models/LULALULALU/VOSR_CKPT) (0.5B / 1.4B, multi-step and one-step), VAE assets and SD2.1 lightweight decoder, and the [ScreenSR](https://modelscope.cn/datasets/LULALULALU/ScreenSR) benchmark. Details in [Preparation](#preparation) and [Inference](#inference).
+- 2026.04.10 — Public release: training and inference code, [pretrained checkpoints](https://modelscope.cn/models/LULALULALU/VOSR_CKPT), bundled VAE / decoder assets, and the [ScreenSR](https://modelscope.cn/datasets/LULALULALU/ScreenSR) benchmark. Setup and file layout: [Preparation](#preparation); commands: [Inference](#inference).
 
 ---
 
@@ -54,6 +54,12 @@ preset/ckpts/
 ├── VOSR_1.4B_ms/               # 1.4B multi-step model
 └── VOSR_1.4B_os/               # 1.4B one-step (distilled) model
 ```
+
+#### VAE and decoder
+
+To improve inference efficiency for image SR, we release `Qwen-Image-vae-2d`, an image-only 2D variant extracted from the original video-style Qwen-Image VAE, which avoids the overhead of the full 3D design.
+
+For SD2.1-based 0.5B models, we provide `sd21_lwdecoder.pth`, a lightweight decoder that serves as an alternative to the original SD2.1 VAE decoder. In our evaluation, it achieves comparable overall visual quality, while performing slightly better on text-rich and document-like images.
 
 ### Training Data
 
