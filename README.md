@@ -21,7 +21,7 @@
 <sup>1</sup> The Hong Kong Polytechnic University  
 <sup>2</sup> OPPO Research Institute
 
-<sup>&#42;</sup> Equal contribution. | <sup>&dagger;</sup> Corresponding author.
+<sup>&#42;</sup> Equal contribution. <sup>&dagger;</sup> Corresponding author.
 
 </div>
 
