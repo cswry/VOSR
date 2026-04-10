@@ -232,7 +232,7 @@ If VOSR is useful for your research, please consider citing:
 
 ## Acknowledgements
 
-This project benefits from [stable-diffusion-2-1-base](https://huggingface.co/Manojb/stable-diffusion-2-1-base), [LightningDiT](https://github.com/hustvl/LightningDiT), and [Qwen-Image](https://huggingface.co/Qwen/Qwen-Image). We thank the authors for their open-source contributions.
+This project benefits from [stable-diffusion-2-1-base](https://huggingface.co/Manojb/stable-diffusion-2-1-base), [LightningDiT](https://github.com/hustvl/LightningDiT), [Qwen-Image](https://huggingface.co/Qwen/Qwen-Image), [RCGM](https://github.com/LINs-lab/RCGM), and [Shortcut-models](https://github.com/kvfrans/shortcut-models). We thank the authors for their open-source contributions.
 
 ## &#x2696;&#xFE0F; License
 
