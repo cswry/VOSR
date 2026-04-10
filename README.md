@@ -11,8 +11,10 @@
 #### &#x1F6A9; Accepted by CVPR 2026
 
 [![Paper](https://img.shields.io/badge/Paper-arXiv-b31b1b.svg)](https://arxiv.org/pdf/2604.03225)
-[![Checkpoints](https://img.shields.io/badge/Checkpoints-ModelScope-6246EA.svg)](https://modelscope.cn/models/LULALULALU/VOSR_CKPT)
-[![Benchmark](https://img.shields.io/badge/Benchmark-ScreenSR-0EA5E9.svg)](https://modelscope.cn/datasets/LULALULALU/ScreenSR)
+[![VOSR-ModelScope](https://img.shields.io/badge/VOSR-ModelScope-6246EA.svg)](https://modelscope.cn/models/LULALULALU/VOSR_CKPT)
+[![VOSR-HuggingFace](https://img.shields.io/badge/VOSR-HuggingFace-FCC624.svg)](https://huggingface.co/CSWRY/VOSR)
+[![ScreenSR-ModelScope](https://img.shields.io/badge/ScreenSR-ModelScope-0EA5E9.svg)](https://modelscope.cn/datasets/LULALULALU/ScreenSR)
+[![ScreenSR-HuggingFace](https://img.shields.io/badge/ScreenSR-HuggingFace-FFB000.svg)](https://huggingface.co/datasets/CSWRY/ScreenSR)
 
 [Rongyuan Wu](https://scholar.google.com/citations?user=A-U8zE8AAAAJ&hl=zh-CN)<sup>1,2,&#42;</sup> |
 [Lingchen Sun](https://scholar.google.com/citations?user=ZCDjTn8AAAAJ&hl=zh-CN)<sup>1,2,&#42;</sup> |
@@ -82,7 +84,7 @@ pip install -r requirements.txt
 
 ### &#x1F4E6; Model Weights
 
-Download all pretrained weights from [VOSR_CKPT](https://modelscope.cn/models/LULALULALU/VOSR_CKPT) and place them under `preset/ckpts/`. The expected structure:
+Download all pretrained weights from [ModelScope](https://modelscope.cn/models/LULALULALU/VOSR_CKPT) or [Hugging Face](https://huggingface.co/CSWRY/VOSR), and place them under `preset/ckpts/`. The expected structure:
 
 ```text
 preset/ckpts/
@@ -123,7 +125,7 @@ For `txt` mode, each folder should contain HQ images (`.png` / `.jpg`). For `web
 
 ### &#x1F9EA; New Real-World Paired Benchmark
 
-Download the [ScreenSR](https://modelscope.cn/datasets/LULALULALU/ScreenSR) benchmark and place it wherever you like, then point `-i` to that folder when running inference.
+Download the [ScreenSR benchmark from ModelScope](https://modelscope.cn/datasets/LULALULALU/ScreenSR) or [Hugging Face](https://huggingface.co/datasets/CSWRY/ScreenSR), place it wherever you like, and then point `-i` to that folder when running inference.
 
 [ScreenSR](https://modelscope.cn/datasets/LULALULALU/ScreenSR) is a real-world paired benchmark for generative SR, built with a screen re-photography pipeline. It provides cleaner references, more diverse content, and broader variation in scenes and scales than existing real-world paired SR benchmarks.
 
