@@ -1,5 +1,9 @@
 <div align="center">
 
+<p align="center">
+  <img src="assets/logo.png" alt="VOSR logo" width="72%">
+</p>
+
 # VOSR: A Vision-Only Generative Model for Image Super-Resolution
 
 <p align="center"><i>A framework for native generative image restoration.</i></p>
