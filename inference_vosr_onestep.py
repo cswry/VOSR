@@ -188,58 +188,147 @@ def _decode_latent(vae, sr_latent, args, latents_mean, latents_std, light_decode
         return vae.decode(sr_latent, return_dict=False)[0].clamp(-1, 1)
 
 
-def tiled_inference(
-    model, vosr_model, vae, venc, lq_tensor, args,
-    tile_size=512, tile_overlap=64, device='cuda',
-    light_decoder=None, sample_fn=None,
+def _gaussian_weights(tile_h, tile_w, channels, device):
+    """2-D Gaussian blend mask (1, C, tile_h, tile_w) peaked at the centre."""
+    var = 0.01
+    mid_h, mid_w = (tile_h - 1) / 2, (tile_w - 1) / 2
+    y = torch.arange(tile_h, dtype=torch.float32)
+    x = torch.arange(tile_w, dtype=torch.float32)
+    wy = torch.exp(-((y - mid_h) / tile_h) ** 2 / (2 * var))
+    wx = torch.exp(-((x - mid_w) / tile_w) ** 2 / (2 * var))
+    w = wy[:, None] * wx[None, :]                       # (tile_h, tile_w)
+    return w.to(device).unsqueeze(0).unsqueeze(0).expand(1, channels, -1, -1)
+
+
+def _make_tile_grid(length, tile, overlap):
+    """Return sorted, deduplicated starting positions that cover *length*."""
+    stride = max(tile - overlap, 1)
+    if length <= tile:
+        return [0]
+    positions = list(range(0, length - tile + 1, stride))
+    if positions[-1] + tile < length:
+        positions.append(length - tile)
+    return sorted(set(positions))
+
+
+def _crop_venc_features(z_fea_full, hi, wi, he, we, lh, lw):
+    """Crop DINOv2 feature list from latent-space coordinates."""
+    tiles = []
+    for z_layer in z_fea_full:
+        B, N, C = z_layer.shape
+        fs = int(math.sqrt(N))
+        fh_s = int(hi / lh * fs)
+        fh_e = max(int(he / lh * fs), fh_s + 1)
+        fw_s = int(wi / lw * fs)
+        fw_e = max(int(we / lw * fs), fw_s + 1)
+        z_2d = z_layer.view(B, fs, fs, C)
+        tiles.append(z_2d[:, fh_s:fh_e, fw_s:fw_e, :].reshape(B, -1, C))
+    return tiles
+
+
+def tiled_latent_inference(
+    model, vae, venc, lq_tensor, args,
+    device='cuda', light_decoder=None,
 ):
-    b, c, h, w = lq_tensor.shape
-    output = torch.zeros((b, c, h, w), device=device, dtype=lq_tensor.dtype)
-    count = torch.zeros((b, 1, h, w), device=device, dtype=lq_tensor.dtype)
+    """
+    Latent-space tiled inference for VOSR DiT.
 
-    z_fea_full = get_venc_features(venc, lq_tensor, args) if venc is not None else None
+    1. VAE-encode the full image once (no tile seams from encoder).
+    2. For each tile, crop the corresponding LQ pixel region, resize to
+       dinov2_size, and extract DINOv2 features independently.  This keeps
+       exact spatial correspondence (same as training) while producing a
+       constant feature shape across tiles (avoids @torch.compile recompilation).
+    3. Generate noise z for the full latent (consistent across overlapping tiles).
+    4. For each flow step, tile only the DiT forward pass in latent space,
+       blend velocity predictions with Gaussian weights, then update z globally.
+    5. VAE-decode the full result latent once.
+    """
+    AE_FACTOR = 8
+    b = lq_tensor.shape[0]
+    patch_size = getattr(args, 'patch_size', 2)
 
-    stride = tile_size - tile_overlap
-    h_steps = list(range(0, max(h - tile_size + 1, 1), stride))
-    if h > tile_size and (h_steps[-1] + tile_size) < h:
-        h_steps.append(h - tile_size)
-    if h <= tile_size:
-        h_steps = [0]
-    w_steps = list(range(0, max(w - tile_size + 1, 1), stride))
-    if w > tile_size and (w_steps[-1] + tile_size) < w:
-        w_steps.append(w - tile_size)
-    if w <= tile_size:
-        w_steps = [0]
+    # --- Full-image encode (done once) ---
+    with torch.no_grad():
+        lq_latent, latents_mean, latents_std = _encode_latent(vae, lq_tensor, args, device)
 
-    for h_idx in h_steps:
-        for w_idx in w_steps:
-            h_end = min(h_idx + tile_size, h)
-            w_end = min(w_idx + tile_size, w)
-            lq_tile = lq_tensor[:, :, h_idx:h_end, w_idx:w_end]
+    _, lc, lh, lw = lq_latent.shape
 
-            with torch.no_grad():
-                lq_latent, latents_mean, latents_std = _encode_latent(vae, lq_tile, args, device)
+    # --- Pixel tile params -> latent tile params (aligned to patch_size) ---
+    lt_size = max((args.tile_size // AE_FACTOR // patch_size) * patch_size, patch_size)
+    lt_overlap = max(args.tile_overlap // AE_FACTOR, lt_size // 8)
+    lt_size = min(lt_size, min(lh, lw))
+    lt_overlap = min(lt_overlap, lt_size - 1)
 
-                z_fea_tile = None
-                if z_fea_full is not None:
-                    z_fea_tile = []
-                    for z_layer in z_fea_full:
-                        B, N, C = z_layer.shape
-                        feat_size = int(math.sqrt(N))
-                        fh_s = int(h_idx / h * feat_size)
-                        fh_e = max(int(h_end / h * feat_size), fh_s + 1)
-                        fw_s = int(w_idx / w * feat_size)
-                        fw_e = max(int(w_end / w * feat_size), fw_s + 1)
-                        z_2d = z_layer.view(B, feat_size, feat_size, C)
-                        z_fea_tile.append(z_2d[:, fh_s:fh_e, fw_s:fw_e, :].reshape(B, -1, C))
+    # --- Fast path: no tiling needed ---
+    if lh <= lt_size and lw <= lt_size:
+        print(f"[Tiled Latent]: latent {lh}x{lw} fits in tile {lt_size}, no tiling needed.")
+        with torch.no_grad():
+            z_fea = get_venc_features(venc, lq_tensor, args) if venc is not None else None
+            z = torch.randn_like(lq_latent)
+            n_steps = args.infer_steps
+            t_seq = torch.linspace(1., 0., n_steps + 1, device=device)
+            for i in range(n_steps):
+                t_cur, t_nxt = t_seq[i], t_seq[i + 1]
+                u = model(torch.cat([lq_latent, z], 1),
+                          t_cur.expand(b), t_nxt.expand(b), z_fea)
+                z = z - (t_cur - t_nxt) * u
+            return _decode_latent(vae, z, args, latents_mean, latents_std, light_decoder)
 
-                sr_latent = sample_fn(model, lq_latent, n_steps=args.infer_steps, venc_fea=z_fea_tile)
-                sr_tile = _decode_latent(vae, sr_latent, args, latents_mean, latents_std, light_decoder)
+    # --- Build tile grid & Gaussian weights ---
+    h_pos = _make_tile_grid(lh, lt_size, lt_overlap)
+    w_pos = _make_tile_grid(lw, lt_size, lt_overlap)
+    g_weight = _gaussian_weights(lt_size, lt_size, lc, device)
+    print(f"[Tiled Latent]: latent {lh}x{lw}, tile={lt_size}, overlap={lt_overlap}, "
+          f"grid={len(h_pos)}x{len(w_pos)}")
 
-            output[:, :, h_idx:h_end, w_idx:w_end] += sr_tile
-            count[:, :, h_idx:h_end, w_idx:w_end] += 1.0
+    # --- Per-tile DINOv2 features (pre-computed once) ---
+    # Each tile's pixel crop is independently resized to dinov2_size and fed
+    # through DINOv2, producing features with constant shape that exactly match
+    # the tile's spatial content (same as training-time behaviour).
+    tile_venc = {}
+    if venc is not None:
+        with torch.no_grad():
+            for hi in h_pos:
+                for wi in w_pos:
+                    ph_s, pw_s = hi * AE_FACTOR, wi * AE_FACTOR
+                    ph_e = min((hi + lt_size) * AE_FACTOR, lq_tensor.shape[2])
+                    pw_e = min((wi + lt_size) * AE_FACTOR, lq_tensor.shape[3])
+                    lq_crop = lq_tensor[:, :, ph_s:ph_e, pw_s:pw_e]
+                    tile_venc[(hi, wi)] = get_venc_features(venc, lq_crop, args)
 
-    return output / count
+    # --- Full-latent noise (shared across tiles for consistency) ---
+    z = torch.randn_like(lq_latent)
+
+    # --- Flow matching loop with tiled DiT ---
+    n_steps = args.infer_steps
+    t_seq = torch.linspace(1., 0., n_steps + 1, device=device)
+
+    with torch.no_grad():
+        for step_i in range(n_steps):
+            t_cur, t_nxt = t_seq[step_i], t_seq[step_i + 1]
+            dt = t_cur - t_nxt
+
+            u_acc = torch.zeros_like(lq_latent)
+            w_acc = torch.zeros_like(lq_latent)
+
+            for hi in h_pos:
+                for wi in w_pos:
+                    he, we = hi + lt_size, wi + lt_size
+
+                    inp = torch.cat([lq_latent[:, :, hi:he, wi:we],
+                                     z[:, :, hi:he, wi:we]], dim=1)
+
+                    z_fea_tile = tile_venc.get((hi, wi))
+                    u_tile = model(inp, t_cur.expand(b), t_nxt.expand(b), z_fea_tile)
+
+                    u_acc[:, :, hi:he, wi:we] += u_tile * g_weight
+                    w_acc[:, :, hi:he, wi:we] += g_weight
+
+            z = z - dt * (u_acc / w_acc)
+
+    # --- Full-latent decode (done once) ---
+    with torch.no_grad():
+        return _decode_latent(vae, z, args, latents_mean, latents_std, light_decoder)
 
 
 def main():
@@ -398,10 +487,9 @@ def main():
 
         try:
             if args.tile_size > 0:
-                sr_tensor = tiled_inference(
-                    model, vosr_model, vae, venc, lq, args,
-                    tile_size=args.tile_size, tile_overlap=args.tile_overlap,
-                    device=device, light_decoder=light_decoder, sample_fn=sample_fn,
+                sr_tensor = tiled_latent_inference(
+                    model, vae, venc, lq, args,
+                    device=device, light_decoder=light_decoder,
                 )
             else:
                 with torch.no_grad():
